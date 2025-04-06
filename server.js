@@ -13,7 +13,6 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// ====== Models ======
 let userSchema = new mongoose.Schema({
   username: String,
   password: String,
@@ -31,7 +30,6 @@ let movieSchema = new mongoose.Schema({
 });
 let Movie = mongoose.model('Movie', movieSchema);
 
-// ====== Middleware ======
 let auth = (req, res, next) => {
   let token = req.headers['authorization']?.split(' ')[1];
   if (!token) return res.status(401).json({ msg: 'No token' });
@@ -49,16 +47,12 @@ let checkRole = (role) => (req, res, next) => {
   next();
 };
 
-// ====== File Upload Setup ======
 let storage = multer.diskStorage({
   destination: './uploads/',
   filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname),
 });
 let upload = multer({ storage });
 
-// ====== Routes ======
-
-// Signup
 app.post('/api/auth/signup', async (req, res) => {
   let { username, password } = req.body;
   let userExists = await User.findOne({ username });
@@ -69,7 +63,6 @@ app.post('/api/auth/signup', async (req, res) => {
   res.json({ msg: 'Signup done' });
 });
 
-// Login
 app.post('/api/auth/login', async (req, res) => {
   let { username, password } = req.body;
   let user = await User.findOne({ username });
@@ -80,7 +73,6 @@ app.post('/api/auth/login', async (req, res) => {
   res.json({ token });
 });
 
-// Create admin user (manually)
 app.post('/api/auth/create-admin', async (req, res) => {
   let adminExists = await User.findOne({ username: 'admin' });
   if (adminExists) return res.json({ msg: 'Admin exists' });
@@ -90,7 +82,6 @@ app.post('/api/auth/create-admin', async (req, res) => {
   res.json({ msg: 'Admin created' });
 });
 
-// Add movie (admin only)
 app.post('/api/movies/admin', auth, checkRole('admin'), upload.single('image'), async (req, res) => {
   let { name, time, totalSeats } = req.body;
   let movie = new Movie({
@@ -104,13 +95,11 @@ app.post('/api/movies/admin', auth, checkRole('admin'), upload.single('image'), 
   res.json({ msg: 'Movie added' });
 });
 
-// Get all movies
 app.get('/api/movies', async (req, res) => {
   let movies = await Movie.find();
   res.json(movies);
 });
 
-// Book movie
 app.post('/api/movies/book/:id', auth, checkRole('user'), async (req, res) => {
   let movie = await Movie.findById(req.params.id);
   let { seats } = req.body;
@@ -124,7 +113,6 @@ app.post('/api/movies/book/:id', auth, checkRole('user'), async (req, res) => {
   res.json({ msg: 'Booked' });
 });
 
-// Cancel booking
 app.post('/api/movies/cancel/:id', auth, checkRole('user'), async (req, res) => {
   let movie = await Movie.findById(req.params.id);
   let booking = movie.bookings.find(b => b.userId === req.user.id);
@@ -135,7 +123,10 @@ app.post('/api/movies/cancel/:id', auth, checkRole('user'), async (req, res) => 
   res.json({ msg: 'Cancelled' });
 });
 
-// ====== Connect DB & Start Server ======
+app.get("/", (req, res) => {
+  res.send("🎬 Movie Booking API is running successfully!");
+});
+
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => {
     console.log('MongoDB connected!');
